@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* özel stiller */
+:root { --radius: 16px; }
+
+body {
+  @apply bg-bg text-white;
+  font-synthesis-weight: none;
+}
+
+.container { @apply max-w-5xl mx-auto px-4; }
+
+.card { @apply bg-card text-ink rounded-[var(--radius)] shadow-soft border border-slate-200; }
+
+.input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-ink placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/60 focus:border-brand; }
+
+.select,.button { @apply rounded-lg; }
+
+.button { @apply inline-flex items-center justify-center px-4 py-2 font-medium border border-slate-300 bg-white text-ink hover:bg-slate-50 active:scale-[0.99] transition; }
+.button-primary { @apply border-transparent bg-brand text-white hover:bg-indigo-600; }
+
+.badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700; }
+
+.table th { @apply text-left text-slate-500 font-semibold border-b border-slate-200 pb-2; }
+.table td { @apply py-3; }
+
+/* === Input normalizasyonu (Chrome / Safari / Firefox) === */
+
+/* Number spinnerlarını kapat (Chrome) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* Number için Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Month input'u her yerde aynı görünsün */
+input[type="month"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #fff;
+  padding-right: 2.25rem; /* ikon alanı */
+  line-height: 1.5;
+}
+
+/* Chrome/Safari aylık takvim ikonu */
+input[type="month"]::-webkit-calendar-picker-indicator {
+  opacity: .7;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+
+/* iOS/Safari’de iç boşluk ve yazı rengi */
+input[type="month"]::-webkit-datetime-edit,
+input[type="month"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+input[type="month"]::-webkit-datetime-edit-text,
+input[type="month"]::-webkit-datetime-edit-month-field,
+input[type="month"]::-webkit-datetime-edit-year-field {
+  color: #0f172a; /* slate-900 */
+}
+
+/* İsteğe bağlı: kendi ikonumuz (tüm tarayıcılar için tutarlı) */
+.input-month {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right .6rem center;
+  background-size: 18px;
+}
+
+/* --- Month input: native picker kalsın --- */
+input[type="month"] {
+  /* appearance: none;  <-- BUNU KALDIR */
+  /* -webkit-appearance: none;  <-- BUNU DA KALDIR */
+  background-color: #fff;
+  padding-right: 2.25rem; /* ikon için boşluk */
+  line-height: 1.5;
+}
+
+/* WebKit (Chrome/Safari) ikon ayarı */
+input[type="month"]::-webkit-calendar-picker-indicator {
+  opacity: .9;
+  cursor: pointer;
+  padding: 0;
+  margin: 0 .25rem 0 0;
+}
