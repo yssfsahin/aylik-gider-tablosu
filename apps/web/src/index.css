@@ -26,6 +26,15 @@ body {
 .table th { @apply text-left text-slate-500 font-semibold border-b border-slate-200 pb-2; }
 .table td { @apply py-3; }
 
+/* ===== Dark Mode Variants ===== */
+.dark body { @apply bg-slate-900 text-slate-100; }
+
+.dark .card { @apply bg-slate-800/70 text-slate-100 border-slate-700; }
+.dark .button { @apply border-slate-600 bg-slate-700 text-slate-100 hover:bg-slate-600; }
+.dark .button-primary { @apply bg-indigo-600 text-white hover:bg-indigo-500; }
+.dark .input { @apply border-slate-600 bg-slate-800 text-slate-100 placeholder-slate-400; }
+.dark .table th { @apply text-slate-300 border-slate-700; }
+
 /* === Input normalizasyonu (Chrome / Safari / Firefox) === */
 
 /* Number spinnerlarını kapat (Chrome) */
@@ -39,46 +48,8 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-/* Month input'u her yerde aynı görünsün */
-input[type="month"] {
-  appearance: none;
-  -webkit-appearance: none;
-  background-color: #fff;
-  padding-right: 2.25rem; /* ikon alanı */
-  line-height: 1.5;
-}
-
-/* Chrome/Safari aylık takvim ikonu */
-input[type="month"]::-webkit-calendar-picker-indicator {
-  opacity: .7;
-  cursor: pointer;
-  padding: 0;
-  margin: 0;
-}
-
-/* iOS/Safari’de iç boşluk ve yazı rengi */
-input[type="month"]::-webkit-datetime-edit,
-input[type="month"]::-webkit-datetime-edit-fields-wrapper {
-  padding: 0;
-}
-input[type="month"]::-webkit-datetime-edit-text,
-input[type="month"]::-webkit-datetime-edit-month-field,
-input[type="month"]::-webkit-datetime-edit-year-field {
-  color: #0f172a; /* slate-900 */
-}
-
-/* İsteğe bağlı: kendi ikonumuz (tüm tarayıcılar için tutarlı) */
-.input-month {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right .6rem center;
-  background-size: 18px;
-}
-
 /* --- Month input: native picker kalsın --- */
 input[type="month"] {
-  /* appearance: none;  <-- BUNU KALDIR */
-  /* -webkit-appearance: none;  <-- BUNU DA KALDIR */
   background-color: #fff;
   padding-right: 2.25rem; /* ikon için boşluk */
   line-height: 1.5;
@@ -91,3 +62,72 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   padding: 0;
   margin: 0 .25rem 0 0;
 }
+
+/* DOLU/BOŞ GÖRÜNÜM KURALLARI
+   Boşken (value yok) WebKit varsayılan tirelerini gizle.
+   Bu sınıfı eklediğimiz inputlarda çalışır: class="input month-clean"
+*/
+input[type="month"].month-clean:required:invalid {
+  color: transparent;                 /* Firefox */
+}
+input[type="month"].month-clean:required:invalid::-webkit-datetime-edit {
+  color: transparent;                 /* Chrome/Safari – tireleri gizle */
+}
+input[type="month"].month-clean:required:invalid::-webkit-datetime-edit-text,
+input[type="month"].month-clean:required:invalid::-webkit-datetime-edit-month-field,
+input[type="month"].month-clean:required:invalid::-webkit-datetime-edit-year-field {
+  color: transparent;
+}
+
+/* Dolu olduğunda normal renk */
+input[type="month"].month-clean:not(:required:invalid) {
+  color: white; /* slate-900 */
+}
+
+/* Varsayılan özel ikon (opsiyonel) */
+.input-month {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right .6rem center;
+  background-size: 18px;
+}
+
+@layer utilities {
+  @keyframes float1 {
+    0%   { transform: translate(-10%, -10%) scale(1); }
+    50%  { transform: translate( 10%,  5%) scale(1.05); }
+    100% { transform: translate(-10%, -10%) scale(1); }
+  }
+  @keyframes float2 {
+    0%   { transform: translate( 5%, -5%) rotate(0deg) scale(1); }
+    50%  { transform: translate(-8%,  8%) rotate(8deg) scale(1.08); }
+    100% { transform: translate( 5%, -5%) rotate(0deg) scale(1); }
+  }
+  @keyframes float3 {
+    0%   { transform: translate(-8%,  8%) scale(1); }
+    50%  { transform: translate(12%, -6%) scale(1.06); }
+    100% { transform: translate(-8%,  8%) scale(1); }
+  }
+  @keyframes float4 {
+    0%   { transform: translate(-12%, 6%) scale(0.95); }
+    50%  { transform: translate( 6%, -10%) scale(1.03); }
+    100% { transform: translate(-12%, 6%) scale(0.95); }
+  }
+  @keyframes float5 {
+    0%   { transform: translate( 8%, -12%) scale(1); }
+    50%  { transform: translate(-10%, 8%) scale(1.07); }
+    100% { transform: translate( 8%, -12%) scale(1); }
+  }
+
+  .animate-first  { animation: float1 14s ease-in-out infinite; }
+  .animate-second { animation: float2 18s ease-in-out infinite; }
+  .animate-third  { animation: float3 22s ease-in-out infinite; }
+  .animate-fourth { animation: float4 26s ease-in-out infinite; }
+  .animate-fifth  { animation: float5 30s ease-in-out infinite; }
+}
+
+/* React Calendar – dark theme tweaks */
+.dark .react-calendar { background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 0.75rem; }
+.dark .react-calendar__navigation button:enabled:hover,
+.dark .react-calendar__tile:enabled:hover { background: rgba(255,255,255,0.06); }
+.dark .react-calendar__tile--active { background: #4f46e5; color: #fff; }
