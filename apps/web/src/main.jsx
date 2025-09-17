@@ -347,11 +347,17 @@ function Planner() {
           end: "",
         })),
       ];
-      months.push({ month: cursor, rows });
+      if (rows.length > 0) {
+        months.push({ month: cursor, rows });
+      }
       cursor = nextYM(cursor);
     }
     setMonthlyView(months);
   };
+  const monthlyViewFilled = useMemo(
+    () => (monthlyView || []).filter((m) => m.rows && m.rows.length > 0),
+    [monthlyView]
+  );
 
   // ================== Exportlar ==================
   const exportPlanXLSX = () => {
@@ -395,9 +401,9 @@ function Planner() {
   };
 
   const exportMonthlyXLSX = () => {
-    if (!monthlyView || monthlyView.length === 0) return;
+    if (!monthlyViewFilled || monthlyViewFilled.length === 0) return;
     const wb = XLSX.utils.book_new();
-    monthlyView.forEach((m) => {
+    monthlyViewFilled.forEach((m) => {
       const rows = m.rows.map((x) => ({
         Tip: x.tip,
         Kategori: x.kategori,
@@ -412,17 +418,17 @@ function Planner() {
       );
     });
     const fileName =
-      monthlyView.length === 1
-        ? `aylik-${monthlyView[0].month}.xlsx`
-        : `aylik-${monthlyView[0].month}_to_${monthlyView[monthlyView.length - 1].month}.xlsx`;
+      monthlyViewFilled.length === 1
+        ? `aylik-${monthlyViewFilled[0].month}.xlsx`
+        : `aylik-${monthlyViewFilled[0].month}_to_${monthlyViewFilled[monthlyViewFilled.length - 1].month}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
   const exportMonthlyPDF = async () => {
-    if (!monthlyView || monthlyView.length === 0) return;
+    if (!monthlyViewFilled || monthlyViewFilled.length === 0) return;
     try {
       const element = (
         <Document>
-          {monthlyView.map((m, i) => {
+          {monthlyViewFilled.map((m, i) => {
             const total = m.rows.reduce((a, r) => a + (+r.tutar || 0), 0);
             return (
               <Page key={i} size="A4" style={pdfStyles.page}>
@@ -453,10 +459,10 @@ function Planner() {
       const blob = await pdf(element).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const first = monthlyView[0].month;
-      const last = monthlyView[monthlyView.length - 1].month;
+      const first = monthlyViewFilled[0].month;
+      const last = monthlyViewFilled[monthlyViewFilled.length - 1].month;
       a.href = url;
-      a.download = monthlyView.length === 1 ? `aylik-${first}.pdf` : `aylik-${first}_to_${last}.pdf`;
+      a.download = monthlyViewFilled.length === 1 ? `aylik-${first}.pdf` : `aylik-${first}_to_${last}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -491,15 +497,15 @@ function Planner() {
           </div>
           <div>
             <div className="text-white/80 text-sm">Hesap Yönetim Sistemi</div>
-            <h1 className="text-2xl font-semibold">Planlama</h1>
+            <h1 className="text-2xl font-semibold">Hesabın Kısa Hali</h1>
           </div>
         </div>
         <div className="flex gap-2">
           <TabButton active={tab === "plan"} onClick={() => setTab("plan")}>
-            Plan Hesaplama
+            Aylık Hesaplama
           </TabButton>
           <TabButton active={tab === "aylik"} onClick={() => setTab("aylik")}>
-            Aylık Hesaplama
+            Yıllık Hesaplama
           </TabButton>
         </div>
       </div>
@@ -508,29 +514,8 @@ function Planner() {
       {tab === "plan" && (
         <div className="card p-5">
           {/* Üst satır */}
-          <div className="grid md:grid-cols-5 gap-3 mb-4">
-            <input
-              className="input input-month"
-              type="month"
-              value={planMonth}
-              onChange={(e) => setPlanMonth(e.target.value)}
-            />
-            <button className="button button-primary" onClick={calcPlan}>
-              Planı Hesapla
-            </button>
-            {planView && (
-              <>
-                <button className="button" onClick={exportPlanXLSX}>
-                  Excel
-                </button>
-                <button className="button" onClick={exportPlanPDF}>
-                  PDF
-                </button>
-              </>
-            )}
-            <button className="button" onClick={clearPlan}>
-              Sıfırla
-            </button>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold">Hesaplasana</h1>
           </div>
 
           {/* Özet kartları (PLAN) — yalnızca Gelir ve Kullanılabilir */}
@@ -652,12 +637,24 @@ function Planner() {
             </div>
           </div>
 
+          {/* Plan – Aksiyonlar */}
+          <div className="flex justify-end gap-2 mt-6">
+            <button className="button button-primary" onClick={calcPlan}>Hesapla</button>
+            <button className="button" onClick={clearPlan}>Sıfırla</button>
+          </div>
+
           {/* PLAN – sonuç tablosu */}
           {planView && (
             <div className="card p-5 mt-6">
-              <h3 className="text-lg font-semibold">
-                {formatYM(planView.month)} – Bu Ay Harcama Özeti
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  {formatYM(planView.month)} – Bu Ay Harcama Özeti
+                </h3>
+                <div className="flex gap-2">
+                  <button className="button" onClick={exportPlanXLSX}>Excel</button>
+                  <button className="button" onClick={exportPlanPDF}>PDF</button>
+                </div>
+              </div>
               <div className="overflow-x-auto mt-3">
                 <table className="w-full border border-slate-200 rounded-lg overflow-hidden shadow-sm">
                   <thead className="bg-slate-50">
@@ -702,35 +699,22 @@ function Planner() {
       {/* ================== AYLIK SEKME ================== */}
       {tab === "aylik" && (
         <div className="card p-5">
-          <div className="grid md:grid-cols-6 gap-3 mb-4">
-            <input
-              className="input input-month"
-              type="month"
-              value={monthlyMonth}
-              onChange={(e) => setMonthlyMonth(e.target.value)}
-            />
-            <input
-              className="input input-month"
-              type="month"
-              value={monthlyEndMonth}
-              onChange={(e) => setMonthlyEndMonth(e.target.value)}
-            />
-            <button className="button button-primary" onClick={calcMonthly}>
-              Aylığı Hesapla
-            </button>
-            {monthlyView && monthlyView.length > 0 && (
-              <>
-                <button className="button" onClick={exportMonthlyXLSX}>
-                  Excel
-                </button>
-                <button className="button" onClick={exportMonthlyPDF}>
-                  PDF
-                </button>
-              </>
-            )}
-            <button className="button" onClick={clearMonthly}>
-              Sıfırla
-            </button>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold">Hesaplasana</h1>
+            <div className="grid grid-cols-2 gap-2 w-full max-w-xs sm:max-w-sm md:max-w-md">
+              <input
+                className="input input-month"
+                type="month"
+                value={monthlyMonth}
+                onChange={(e) => setMonthlyMonth(e.target.value)}
+              />
+              <input
+                className="input input-month"
+                type="month"
+                value={monthlyEndMonth}
+                onChange={(e) => setMonthlyEndMonth(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Özet kartları */}
@@ -963,10 +947,22 @@ function Planner() {
             </div>
           </div>
 
+          {/* Aylık – Aksiyonlar */}
+          <div className="flex justify-end gap-2 mt-6">
+            <button className="button button-primary" onClick={calcMonthly}>Hesapla</button>
+            {monthlyView && monthlyView.length > 0 && (
+              <>
+                <button className="button" onClick={exportMonthlyXLSX}>Excel</button>
+                <button className="button" onClick={exportMonthlyPDF}>PDF</button>
+              </>
+            )}
+            <button className="button" onClick={clearMonthly}>Sıfırla</button>
+          </div>
+
           {/* AYLIK – sonuç tablosu */}
-          {monthlyView && monthlyView.length > 0 && (
+          {monthlyViewFilled && monthlyViewFilled.length > 0 && (
             <div className="space-y-6">
-              {monthlyView.map((m) => {
+              {monthlyViewFilled.map((m) => {
                 const total = m.rows.reduce((a, r) => a + (+r.tutar || 0), 0);
                 return (
                   <div key={m.month} className="card p-5 mt-6">
