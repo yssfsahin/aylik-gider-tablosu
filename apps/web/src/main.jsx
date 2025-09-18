@@ -75,68 +75,297 @@ const formatYM = (ym) => {
   }
 };
 
+// ---- Donut renkleri (istersen artır) ----
+const COLORS = [
+  "#4f46e5", "#22c55e", "#eab308", "#ef4444", "#06b6d4",
+  "#f97316", "#a78bfa", "#14b8a6", "#84cc16", "#f43f5e"
+];
+
+// Kategorileri topla -> [{label, value}]
+const groupByKategori = (rows) => {
+  const map = new Map();
+  rows.forEach(r => {
+    const k = r.kategori || "Diğer";
+    map.set(k, (map.get(k) || 0) + (+r.tutar || 0));
+  });
+  return Array.from(map.entries()).map(([label, value]) => ({ label, value }));
+};
+
+// Donut için veri: ilk 8 + "Diğer"
+const buildChartData = (rows) => {
+  const grouped = groupByKategori(rows).sort((a,b) => b.value - a.value);
+  const top = grouped.slice(0, 8);
+  const restSum = grouped.slice(8).reduce((a,x)=>a+x.value, 0);
+  if (restSum > 0) top.push({ label: "Diğer", value: restSum });
+  return top.map((d,i)=> ({ ...d, color: COLORS[i % COLORS.length] }));
+};
+
+const DonutChart = ({ data = [], size = 220, stroke = 28, centerText }) => {
+  const total = data.reduce((a,b)=>a + (b.value||0), 0) || 1;
+  const R = (size - stroke) / 2;
+  const C = Math.PI * 2 * R;
+  let acc = 0;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {/* arka halka */}
+      <circle
+        cx={size/2} cy={size/2} r={R}
+        fill="none" stroke="#e2e8f0" strokeWidth={stroke}
+      />
+      {/* dilimler */}
+      {data.map((d,i) => {
+        const frac = d.value / total;
+        const dash = C * frac;
+        const gap = C - dash;
+        const offset = C * 0.25 - acc; // saat 12'den başlat
+        acc += dash;
+        return (
+          <circle
+            key={i}
+            cx={size/2} cy={size/2} r={R}
+            fill="none"
+            stroke={d.color}
+            strokeWidth={stroke}
+            strokeDasharray={`${dash} ${gap}`}
+            strokeDashoffset={offset}
+            strokeLinecap="butt"
+          />
+        );
+      })}
+      {/* merkez yazısı */}
+      {centerText && (
+        <>
+          <text
+            x="50%" y="50%" textAnchor="middle" dominantBaseline="central"
+            fontSize="18" fontWeight="700" fill="#0f172a"
+          >
+            {centerText.title}
+          </text>
+          <text
+            x="50%" y="62%" textAnchor="middle"
+            fontSize="12" fill="#64748b"
+          >
+            {centerText.subtitle}
+          </text>
+        </>
+      )}
+    </svg>
+  );
+};
+
+
+const Legend = ({ data = [] }) => (
+  <ul className="rounded-lg border border-slate-200 divide-y divide-slate-200 overflow-hidden max-h-72 md:max-h-80 overflow-y-auto">
+    {data.map((d, i) => (
+      <li
+        key={i}
+        className="flex items-center justify-between px-3 py-2.5 hover:bg-slate-50/80 transition"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ background: d.color }}
+          />
+          <span className="text-sm text-slate-700 truncate max-w-[12rem] sm:max-w-[16rem]">
+            {d.label}
+          </span>
+        </div>
+        <div className="text-sm font-medium tabular-nums text-slate-900">
+          {tl(d.value)} ₺
+        </div>
+      </li>
+    ))}
+  </ul>
+);
+
+// ================== DistributionBarWeb ==================
+const DistributionBarWeb = ({ data = [] }) => {
+  const total = data.reduce((a, b) => a + (b.value || 0), 0) || 1;
+
+  return (
+    <div>
+      <h4 className="text-sm font-semibold text-slate-600 mb-2">Kategori Dağılımı</h4>
+
+      {/* Stacked bar */}
+      <div className="w-full h-3 rounded-full overflow-hidden border border-slate-200">
+        <div className="flex h-full">
+          {data.map((d, i) => (
+            <div
+              key={i}
+              className="h-full"
+              style={{ width: `${((d.value || 0) / total) * 100}%`, background: d.color }}
+              title={`${d.label}: ${((d.value || 0) / total * 100).toFixed(1)}%`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Legend with percentages */}
+      <ul className="mt-3 space-y-1 text-sm">
+        {data.map((d, i) => (
+          <li key={i} className="flex items-center gap-2 text-slate-600">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-sm"
+              style={{ background: d.color }}
+            />
+            <span className="truncate">
+              {d.label} — {(((d.value || 0) / total) * 100).toFixed(1)}%
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+// ================== Suggestions Paragraph ==================
+const buildAdviceParagraph = (data = []) => {
+  if (!data.length) return "";
+  const total = data.reduce((a, b) => a + (b.value || 0), 0) || 1;
+  // en yüksek ilk 2-3 kategoriyi bul
+  const top = [...data].sort((a, b) => (b.value || 0) - (a.value || 0)).slice(0, 3);
+
+  const tips = {
+    "Market": "alışverişi planlı yap ve gereksiz harcamaları azalt",
+    "Kira / Aidat": "mümkünse kira/aidat konusunda pazarlık yap ya da alternatif değerlendir",
+    "Sigorta": "farklı poliçeleri karşılaştır, teminatı koruyarak uygun fiyat bul",
+    "Vergi / MTV": "erken ödeme veya taksit seçeneklerini gözden geçir",
+    "Yeme-İçme": "dışarıda yeme sıklığını azalt, evde hazırlık yap",
+    "Ulaşım": "toplu taşıma veya ortak yolculukları tercih et",
+  };
+
+  const sentences = top.map((c) => {
+    const pct = ((c.value || 0) / total) * 100;
+    const advice = tips[c.label] || "bu kategoride harcamalarını gözden geçir";
+    return `${c.label} (${pct.toFixed(1)}%) için ${advice}`;
+  });
+
+  return `Bu ay harcamaların arasında ${sentences.join(", ")} önerilir.`;
+};
+
+const SuggestionsParagraph = ({ data = [] }) => {
+  const text = buildAdviceParagraph(data);
+  if (!text) return null;
+  return (
+    <div className="mt-4 p-4 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 leading-6">
+      {text}
+    </div>
+  );
+};
+
+// ================== AdviceBox ==================
+const AdviceBox = ({ data = [], income = 0 }) => {
+  // total spending from data
+  const total = Array.isArray(data) ? data.reduce((a, b) => a + (b.value || 0), 0) : 0;
+  const incomeSum = Number(income || 0);
+  const ratio = incomeSum > 0 ? total / incomeSum : 0;
+
+  // label pill (based on ratio)
+  let label = "";
+  let pillText = "";
+  let pillBorder = "";
+  if (ratio < 0.25) {
+    label = "Cimrisin Galiba";
+    pillText = "text-emerald-700";
+    pillBorder = "border-emerald-300";
+  } else if (ratio < 0.5) {
+    label = "Güzel Harcama";
+    pillText = "text-sky-700";
+    pillBorder = "border-sky-300";
+  } else if (ratio < 0.8) {
+    label = "İdeal Harcama";
+    pillText = "text-indigo-700";
+    pillBorder = "border-indigo-300";
+  } else {
+    label = "Ocağa İncir Ağacı";
+    pillText = "text-rose-700";
+    pillBorder = "border-rose-300";
+  }
+
+  // find top categories (up to 3) by share
+  const byShare = [...(data || [])]
+    .map(d => ({ ...d, share: total ? (d.value || 0) / total : 0 }))
+    .sort((a, b) => (b.share || 0) - (a.share || 0))
+    .slice(0, 3);
+
+  // short per-category tip map
+  const tips = {
+    "Market": "alışverişi planla ve gereksiz alımları azalt",
+    "Kira / Aidat": "mümkünse pazarlık yap ya da alternatif değerlendir",
+    "Sigorta": "poliçeleri karşılaştır, teminatı koruyarak uygun fiyat bul",
+    "Vergi / MTV": "erken ödeme veya taksit seçeneklerini incele",
+    "Yeme-İçme": "dışarıda yemeyi azalt, evde hazırlık yap",
+    "Ulaşım": "toplu taşıma veya ortak yolculukları düşün",
+  };
+
+  return (
+    <div className="relative my-6 p-4 rounded-lg border border-orange-300 bg-orange-50/40 text-slate-700">
+      {/* Başlık etiketi (ribbon) */}
+      <span className={`absolute -top-3 left-4 px-2 py-0.5 text-base font-semibold rounded-md border ${pillBorder} ${pillText} bg-white shadow-sm`}>
+        {label}
+      </span>
+
+      {/* Metin: biraz küçük, önemli yerler bold */}
+      <p className="text-[0.95rem] leading-7">
+        Bu ay gider/gelir oranın <strong>{(ratio * 100).toFixed(1)}%</strong>.{" "}
+        {(byShare.length > 0) && (
+          <>
+            Özellikle{" "}
+            {byShare.map((c, i) => (
+              <React.Fragment key={i}>
+                <strong>{c.label}</strong> (<strong>{(c.share * 100).toFixed(1)}%</strong>)
+                {i < byShare.length - 1 ? ", " : " "}
+              </React.Fragment>
+            ))}
+            kalemlerinde dikkatli ol.{" "}
+          </>
+        )}
+        {byShare.map((c, i) => {
+          const advice = tips[c.label] || "bu kategoride harcamalarını gözden geçir";
+          return (
+            <React.Fragment key={`advice-${i}`}>
+              {i === 0 ? "" : " "} <strong>{c.label}</strong> için {advice}.
+            </React.Fragment>
+          );
+        })}
+      </p>
+    </div>
+  );
+};
+
 // ================== PDF Styles & Components (React-PDF) ==================
 /// Tanımladığımız Fontu burda style olarak Fontfamiliy ekledik
 const pdfStyles = StyleSheet.create({
-  page: { padding: 32, fontFamily: "Roboto" }, // PDF genel font
-  h1: {
-    fontSize: 16,
-    marginBottom: 12,
-    color: "#0f172a",
-    fontFamily: "Roboto Bold",
-  }, // başlık
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: "#f1f5f9",
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-    fontFamily: "Roboto",
-  },
-  th: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    fontSize: 11,
-    color: "#334155",
-    fontWeight: "bold",
-    fontFamily: "Roboto",
-  },
-  row: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
-    borderBottomStyle: "solid",
-    fontFamily: "Roboto",
-  },
-  td: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    fontSize: 11,
-    color: "#334155",
-    fontFamily: "Roboto",
-  },
+  page: { padding: 32, fontFamily: "Roboto" },
+  brandRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  brandIcon: { width: 18, height: 18, borderRadius: 4, backgroundColor: "#4f46e5", marginRight: 8 },
+  brandTitle: { fontSize: 12, color: "#334155", fontFamily: "Roboto Bold" },
+  brandSub: { fontSize: 10, color: "#64748b", marginTop: 2 },
+  h1: { fontSize: 16, marginTop: 10, marginBottom: 12, color: "#0f172a", fontFamily: "Roboto Bold" },
+  tableHeader: { flexDirection: "row", backgroundColor: "#f1f5f9", borderTopLeftRadius: 6, borderTopRightRadius: 6, fontFamily: "Roboto" },
+  th: { flex: 1, paddingVertical: 8, paddingHorizontal: 10, fontSize: 11, color: "#334155", fontWeight: "bold", fontFamily: "Roboto" },
+  row: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", borderBottomStyle: "solid", fontFamily: "Roboto" },
+  rowAlt: { backgroundColor: "#f8fafc" },
+  td: { flex: 1, paddingVertical: 8, paddingHorizontal: 10, fontSize: 11, color: "#334155", fontFamily: "Roboto" },
   tdRight: { textAlign: "right" },
-  totalRow: { flexDirection: "row", backgroundColor: "#f8fafc" },
-  totalLabel: {
-    flex: 2,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    fontSize: 12,
-    fontWeight: "bold",
-    fontFamily: "Roboto Bold",
-  },
-  totalValue: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    fontSize: 12,
-    fontWeight: "bold",
-    textAlign: "right",
-    color: "#4f46e5",
-    fontFamily: "Roboto Bold",
-  },
+  totalRow: { flexDirection: "row", backgroundColor: "#eef2ff", borderBottomLeftRadius: 6, borderBottomRightRadius: 6 },
+  totalLabel: { flex: 2, paddingVertical: 10, paddingHorizontal: 10, fontSize: 12, fontFamily: "Roboto Bold", color: "#3730a3" },
+  totalValue: { flex: 1, paddingVertical: 10, paddingHorizontal: 10, fontSize: 12, fontFamily: "Roboto Bold", textAlign: "right", color: "#4f46e5" },
+  footer: { position: "absolute", left: 32, right: 32, bottom: 24, fontSize: 9, color: "#94a3b8", flexDirection: "row", justifyContent: "space-between" }
 });
+
+const BrandHeader = ({ subtitle }) => (
+  <View>
+    <View style={pdfStyles.brandRow}>
+      <View style={pdfStyles.brandIcon} />
+      <View>
+        <Text style={pdfStyles.brandTitle}>Hesabın Kralı</Text>
+        {subtitle ? <Text style={pdfStyles.brandSub}>{subtitle}</Text> : null}
+      </View>
+    </View>
+  </View>
+);
 
 const TableHeader = ({ headers = [] }) => (
   <View style={pdfStyles.tableHeader}>
@@ -154,54 +383,146 @@ const TableHeader = ({ headers = [] }) => (
 const TableRows = ({ rows = [] }) => (
   <>
     {rows.map((r, i) => (
-      <View key={i} style={pdfStyles.row}>
+      <View key={i} style={[pdfStyles.row, i % 2 === 1 && pdfStyles.rowAlt]}>
         <Text style={pdfStyles.td}>{r.tip}</Text>
         <Text style={pdfStyles.td}>{r.kategori}</Text>
-        <Text style={[pdfStyles.td, pdfStyles.tdRight]}>{`${tl(
-          r.tutar
-        )} ₺`}</Text>
+        <Text style={[pdfStyles.td, pdfStyles.tdRight]}>{`${tl(r.tutar)} ₺`}</Text>
       </View>
     ))}
   </>
 );
 
-const PlanPDFDoc = ({ month, rows, total }) => (
-  <Document>
-    <Page size="A4" style={pdfStyles.page}>
-      <Text style={pdfStyles.h1}>{`${formatYM(
-        month
-      )} – Bu Ay Harcama Özeti`}</Text>
-      <TableHeader headers={["Tip", "Kategori", "Tutar"]} />
-      <TableRows rows={rows} />
-      <View style={pdfStyles.totalRow}>
-        <Text style={pdfStyles.totalLabel}>Toplam</Text>
-        <Text style={pdfStyles.totalValue}>{`${tl(total)} ₺`}</Text>
+const SummaryCards = ({ items = [] }) => (
+  <View style={{ flexDirection: "row", gap: 8, marginTop: 8, marginBottom: 8 }}>
+    {items.map((it, idx) => (
+      <View
+        key={idx}
+        style={{
+          flex: 1,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          backgroundColor: "#f8fafc",
+          borderWidth: 1,
+          borderColor: "#e2e8f0",
+          borderRadius: 8,
+        }}
+      >
+        <Text style={{ fontSize: 10, color: "#64748b", marginBottom: 4 }}>{it.label}</Text>
+        <Text style={{ fontSize: 14, fontFamily: "Roboto Bold", color: it.color || "#0f172a" }}>
+          {it.value}
+        </Text>
       </View>
-    </Page>
-  </Document>
+    ))}
+  </View>
 );
+
+const DistributionBar = ({ segments = [] }) => {
+  // segments: [{ label, value, color, percent }]
+  const total = segments.reduce((a, s) => a + (s.value || 0), 0) || 1;
+  return (
+    <View style={{ marginTop: 6, marginBottom: 20 }}>
+      <View style={{ height: 10, borderRadius: 6, overflow: "hidden", flexDirection: "row", borderWidth: 1, borderColor: "#e2e8f0" }}>
+        {segments.map((s, i) => (
+          <View
+            key={i}
+            style={{
+              flex: (s.value || 0) / total,
+              backgroundColor: s.color || "#c7d2fe",
+            }}
+          />
+        ))}
+      </View>
+      <View style={{ marginTop: 6, flexDirection: "column", gap: 4 }}>
+        {segments.map((s, i) => (
+          <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: s.color || "#c7d2fe" }} />
+            <Text style={{ fontSize: 10, color: "#475569" }}>
+              {s.label} — {((s.value / total) * 100).toFixed(1)}%
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const PlanPDFDoc = ({ month, rows, total, incomeSum = 0, available = 0 }) => {
+  // kategori dağılımı (ilk 5 + Diğer)
+  const palette = ["#a5b4fc","#93c5fd","#86efac","#fca5a5","#fcd34d","#cbd5e1"];
+  const byCat = rows.reduce((acc, r) => {
+    const k = r.kategori || "Diğer";
+    acc[k] = (acc[k] || 0) + (+r.tutar || 0);
+    return acc;
+  }, {});
+  const sorted = Object.entries(byCat).sort((a,b)=> b[1]-a[1]);
+  const top = sorted.slice(0,5);
+  const rest = sorted.slice(5).reduce((a, [,v])=> a+v, 0);
+  const segsArr = [...top, ...(rest>0 ? [["Diğer", rest]]:[])].map(([label, value], i)=> ({
+    label,
+    value,
+    color: palette[i % palette.length],
+  }));
+
+  return (
+    <Document>
+      <Page size="A4" style={pdfStyles.page}>
+        <BrandHeader subtitle={`Rapor tarihi: ${new Date().toLocaleDateString("tr-TR")}`} />
+        <Text style={pdfStyles.h1}>{`${formatYM(month)} – Bu Ay Harcama Özeti`}</Text>
+
+        {/* Özet kartları */}
+        <SummaryCards
+          items={[
+            { label: "Gelir", value: `${tl(incomeSum)} ₺` },
+            { label: "Gider", value: `${tl(total)} ₺` },
+            { label: "Kullanılabilir", value: `${available >= 0 ? tl(available) : "-" + tl(Math.abs(available))} ₺`, color: available >= 0 ? "#059669" : "#dc2626" },
+          ]}
+        />
+
+        {/* Kategori dağılımı mini bar */}
+        {segsArr.length > 0 && (
+          <>
+            <Text style={{ fontSize: 11, color: "#334155", marginTop: 20, marginBottom: 8, fontFamily: "Roboto Bold" }}>Kategori Dağılımı</Text>
+            <DistributionBar segments={segsArr} />
+          </>
+        )}
+
+        <TableHeader headers={["Tip", "Kategori", "Tutar"]} />
+        <TableRows rows={rows} />
+        <View style={pdfStyles.totalRow}>
+          <Text style={pdfStyles.totalLabel}>Toplam</Text>
+          <Text style={pdfStyles.totalValue}>{`${tl(total)} ₺`}</Text>
+        </View>
+        <View style={pdfStyles.footer}>
+          <Text render={({ pageNumber, totalPages }) => `© ${new Date().getFullYear()} Hesabın Kralı`} />
+          <Text render={({ pageNumber, totalPages }) => `Sayfa ${pageNumber} / ${totalPages}`} />
+        </View>
+      </Page>
+    </Document>
+  );
+};
 
 const MonthlyPDFDoc = ({ month, rows, total }) => (
   <Document>
     <Page size="A4" style={pdfStyles.page}>
+      <BrandHeader subtitle={`Rapor tarihi: ${new Date().toLocaleDateString("tr-TR")}`} />
       <Text style={pdfStyles.h1}>{`${formatYM(month)} – Aylık Giderler`}</Text>
-      <TableHeader
-        headers={["Tip", "Kategori", "Başlangıç", "Bitiş", "Tutar"]}
-      />
+      <TableHeader headers={["Tip", "Kategori", "Başlangıç", "Bitiş", "Tutar"]} />
       {rows.map((r, i) => (
-        <View key={i} style={pdfStyles.row}>
+        <View key={i} style={[pdfStyles.row, i % 2 === 1 && pdfStyles.rowAlt]}>
           <Text style={pdfStyles.td}>{r.tip}</Text>
           <Text style={pdfStyles.td}>{r.kategori}</Text>
           <Text style={pdfStyles.td}>{r.start || ""}</Text>
           <Text style={pdfStyles.td}>{r.end || ""}</Text>
-          <Text style={[pdfStyles.td, pdfStyles.tdRight]}>{`${tl(
-            r.tutar
-          )} ₺`}</Text>
+          <Text style={[pdfStyles.td, pdfStyles.tdRight]}>{`${tl(r.tutar)} ₺`}</Text>
         </View>
       ))}
       <View style={pdfStyles.totalRow}>
         <Text style={pdfStyles.totalLabel}>Toplam</Text>
         <Text style={pdfStyles.totalValue}>{`${tl(total)} ₺`}</Text>
+      </View>
+      <View style={pdfStyles.footer}>
+        <Text render={({ pageNumber, totalPages }) => `© ${new Date().getFullYear()} Hesabın Kralı`} />
+        <Text render={({ pageNumber, totalPages }) => `Sayfa ${pageNumber} / ${totalPages}`} />
       </View>
     </Page>
   </Document>
@@ -467,6 +788,8 @@ function Planner() {
           month={planView.month}
           rows={planView.monthBreakdown}
           total={planSummary.expenseSum}
+          incomeSum={planSummary.incomeSum}
+          available={planSummary.available}
         />
       );
       const blob = await pdf(element).toBlob();
@@ -516,11 +839,46 @@ function Planner() {
         <Document>
           {monthlyViewFilled.map((m, i) => {
             const total = m.rows.reduce((a, r) => a + (+r.tutar || 0), 0);
+            const incSum = incomes.reduce((a, b) => a + (+b || 0), 0);
+
+            // kategori dağılımı (ilk 5 + Diğer)
+            const palette = ["#a5b4fc","#93c5fd","#86efac","#fca5a5","#fcd34d","#cbd5e1"];
+            const byCat = m.rows.reduce((acc, r) => {
+              const k = r.kategori || "Diğer";
+              acc[k] = (acc[k] || 0) + (+r.tutar || 0);
+              return acc;
+            }, {});
+            const sorted = Object.entries(byCat).sort((a,b)=> b[1]-a[1]);
+            const top = sorted.slice(0,5);
+            const rest = sorted.slice(5).reduce((a, [,v])=> a+v, 0);
+            const segsArr = [...top, ...(rest>0 ? [["Diğer", rest]]:[])].map(([label, value], idx)=> ({
+              label,
+              value,
+              color: palette[idx % palette.length],
+            }));
+
+            const avail = incSum - total;
+
             return (
               <Page key={i} size="A4" style={pdfStyles.page}>
-                <Text style={pdfStyles.h1}>{`${formatYM(
-                  m.month
-                )} – Aylık Giderler`}</Text>
+                <BrandHeader subtitle={`Rapor tarihi: ${new Date().toLocaleDateString("tr-TR")}`} />
+                <Text style={pdfStyles.h1}>{`${formatYM(m.month)} – Aylık Giderler`}</Text>
+
+                <SummaryCards
+                  items={[
+                    { label: "Gelir", value: `${tl(incSum)} ₺` },
+                    { label: "Gider", value: `${tl(total)} ₺` },
+                    { label: "Kullanılabilir", value: `${avail >= 0 ? tl(avail) : "-" + tl(Math.abs(avail))} ₺`, color: avail >= 0 ? "#059669" : "#dc2626" },
+                  ]}
+                />
+
+                {segsArr.length > 0 && (
+                  <>
+                    <Text style={{ fontSize: 11, color: "#334155", marginTop: 6, marginBottom: 4, fontFamily: "Roboto Bold" }}>Kategori Dağılımı</Text>
+                    <DistributionBar segments={segsArr} />
+                  </>
+                )}
+
                 <View style={pdfStyles.tableHeader}>
                   {["Tip", "Kategori", "Başlangıç", "Bitiş", "Tutar"].map(
                     (h, hi) => (
@@ -534,19 +892,21 @@ function Planner() {
                   )}
                 </View>
                 {m.rows.map((r, ri) => (
-                  <View key={ri} style={pdfStyles.row}>
+                  <View key={ri} style={[pdfStyles.row, ri % 2 === 1 && pdfStyles.rowAlt]}>
                     <Text style={pdfStyles.td}>{r.tip}</Text>
                     <Text style={pdfStyles.td}>{r.kategori}</Text>
                     <Text style={pdfStyles.td}>{r.start || ""}</Text>
                     <Text style={pdfStyles.td}>{r.end || ""}</Text>
-                    <Text style={[pdfStyles.td, pdfStyles.tdRight]}>{`${tl(
-                      r.tutar
-                    )} ₺`}</Text>
+                    <Text style={[pdfStyles.td, pdfStyles.tdRight]}>{`${tl(r.tutar)} ₺`}</Text>
                   </View>
                 ))}
                 <View style={pdfStyles.totalRow}>
                   <Text style={pdfStyles.totalLabel}>Toplam</Text>
                   <Text style={pdfStyles.totalValue}>{`${tl(total)} ₺`}</Text>
+                </View>
+                <View style={pdfStyles.footer}>
+                  <Text render={({ pageNumber, totalPages }) => `© ${new Date().getFullYear()} Hesabın Kralı`} />
+                  <Text render={({ pageNumber, totalPages }) => `Sayfa ${pageNumber} / ${totalPages}`} />
                 </View>
               </Page>
             );
@@ -972,6 +1332,30 @@ function Planner() {
                       </tbody>
                     </table>
                   </div>
+                  {/* Harcamaların dağılımı (PLAN) */}
+                  {(() => {
+                    const chartData = buildChartData(planView.monthBreakdown || []);
+                    const total = chartData.reduce((a, b) => a + b.value, 0);
+                    return (
+                      <div className="space-y-4 mt-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div className="flex items-center justify-center">
+                            <DonutChart
+                              data={chartData}
+                              size={240}
+                              stroke={28}
+                              centerText={{
+                                title: `${tl(total)} ₺`,
+                                subtitle: "Toplam Gider"
+                              }}
+                            />
+                          </div>
+                          <DistributionBarWeb data={chartData} />
+                        </div>
+                        <AdviceBox data={chartData} income={planSummary.incomeSum} />
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -1287,6 +1671,27 @@ function Planner() {
                         <h3 className="text-lg font-semibold">
                           {formatYM(m.month)} – Aylık Giderler
                         </h3>
+                        {/* Mini dağılım (AYLIK kart) */}
+                        {(() => {
+                          const chartData = buildChartData(m.rows || []);
+                          const total = chartData.reduce((a, b) => a + b.value, 0);
+                          return (
+                            <div className="space-y-4 mt-3">
+                              <div className="grid md:grid-cols-2 gap-6">
+                                <div className="flex items-center justify-center">
+                                  <DonutChart
+                                    data={chartData}
+                                    size={200}
+                                    stroke={24}
+                                    centerText={{ title: `${tl(total)} ₺`, subtitle: "Toplam" }}
+                                  />
+                                </div>
+                                <DistributionBarWeb data={chartData} />
+                              </div>
+                              <AdviceBox data={chartData} income={incomes.reduce((a, b) => a + (+b || 0), 0)} />
+                            </div>
+                          );
+                        })()}
                         <div className="overflow-x-auto mt-3">
                           <table className="w-full border border-slate-200 rounded-lg overflow-hidden shadow-sm">
                             <thead className="bg-slate-50">
