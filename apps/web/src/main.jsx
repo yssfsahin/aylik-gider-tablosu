@@ -5,6 +5,7 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import GradientBackground from "./components/GradientBackground";
 
+
 import * as XLSX from "xlsx";
 import {
   Document,
@@ -12,8 +13,16 @@ import {
   Text,
   View,
   StyleSheet,
+  Font,
   pdf,
 } from "@react-pdf/renderer";
+
+/// Google Fonts ile fontu public içine attık. Sonrasında Burada Fontu tanımladık
+Font.register({
+  family: "Roboto",
+  src: "/fonts/Roboto-Regular.ttf", // public klasöründen erişilebilir
+  format: "truetype",
+});
 
 // ================== Yardımcılar ==================
 const tl = (n) =>
@@ -62,14 +71,16 @@ const formatYM = (ym) => {
 };
 
 // ================== PDF Styles & Components (React-PDF) ==================
+/// Tanımladığımız Fontu burda style olarak Fontfamiliy ekledik
 const pdfStyles = StyleSheet.create({
-  page: { padding: 32 },
+  page: { padding: 32 ,},
   h1: { fontSize: 16, marginBottom: 12, color: "#0f172a", fontWeight: "bold" },
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#f1f5f9",
     borderTopLeftRadius: 6,
     borderTopRightRadius: 6,
+    fontFamily: "Roboto"
   },
   th: {
     flex: 1,
@@ -78,12 +89,14 @@ const pdfStyles = StyleSheet.create({
     fontSize: 11,
     color: "#334155",
     fontWeight: "bold",
+    fontFamily: "Roboto"
   },
   row: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
     borderBottomStyle: "solid",
+    fontFamily: "Roboto"
   },
   td: {
     flex: 1,
@@ -91,6 +104,7 @@ const pdfStyles = StyleSheet.create({
     paddingHorizontal: 10,
     fontSize: 11,
     color: "#334155",
+    fontFamily: "Roboto"
   },
   tdRight: { textAlign: "right" },
   totalRow: { flexDirection: "row", backgroundColor: "#f8fafc" },
@@ -100,6 +114,7 @@ const pdfStyles = StyleSheet.create({
     paddingHorizontal: 10,
     fontSize: 12,
     fontWeight: "bold",
+    fontFamily: "Roboto"
   },
   totalValue: {
     flex: 1,
@@ -109,6 +124,7 @@ const pdfStyles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "right",
     color: "#4f46e5",
+    fontFamily: "Roboto"
   },
 });
 
