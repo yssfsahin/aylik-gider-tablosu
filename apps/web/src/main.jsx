@@ -10,6 +10,7 @@ import MonthField from "./components/MonthField";
 import DonutChart from "./components/DonutChart";
 import DistributionBarWeb from "./components/DistributionBarWeb";
 import AdviceBox from "./components/AdviceBox";
+import LoginModal from "./components/LoginModal";
 
 // PDF dokümanları
 import { PlanPDFDoc, MonthlyPDFDoc } from "./components/pdf";
@@ -20,6 +21,7 @@ import { ymNum, isActiveInMonth, nextYM, formatYM } from "./lib/date";
 import { FIXED_MAIN_CATEGORIES, VARIABLE_CATEGORIES } from "./lib/categories";
 import { LS_PLAN, LS_MONTHLY } from "./lib/storage";
 import usePersistentState from "./hooks/usePersistentState";
+import { supabase } from "./lib/supabaseClient";
 
 // Export için
 import * as XLSX from "xlsx";
@@ -27,6 +29,30 @@ import { pdf } from "@react-pdf/renderer";
 
 function Planner() {
   const todayYM = new Date().toISOString().slice(0, 7);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  // ---------- Auth (kullanıcı) ----------
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    // mevcut kullanıcıyı yükle
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      setUser(data?.user ?? null);
+    });
+    // değişimleri dinle
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => {
+      mounted = false;
+      sub?.subscription?.unsubscribe?.();
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    try { await supabase.auth.signOut(); } catch (e) { console.error(e); }
+  };
 
   // ---------- Sekme ----------
   const [tab, setTab] = useState("zam"); // "plan" | "aylik" | "zam"
@@ -287,7 +313,13 @@ function Planner() {
   // ---------- UI ----------
   return (
     <div className="flex flex-col min-h-screen">
-      <Header activeTab={tab} onSelectTab={setTab} />
+      <Header
+        activeTab={tab}
+        onSelectTab={setTab}
+        user={user}
+        onOpenAuth={() => setAuthOpen(true)}
+        onSignOut={handleSignOut}
+      />
       <main className="flex-1">
         <div className="container mt-8 sm:mt-10 mb-8">
           {/* PLAN */}
@@ -662,7 +694,7 @@ function Planner() {
           )}
         </div>
       </main>
-
+      {authOpen && <LoginModal open={authOpen} onClose={() => setAuthOpen(false)} />}
       <Footer onSelectTab={setTab} />
     </div>
   );

@@ -1,7 +1,11 @@
 import React from "react";
 
-export default function Header({ activeTab, onSelectTab }) {
+export default function Header({ activeTab, onSelectTab = () => {}, user, onOpenAuth = () => {}, onSignOut = () => {} }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  const displayName = React.useMemo(() => {
+    return (user?.user_metadata?.name || user?.email || user?.phone || "Kullanıcı");
+  }, [user]);
 
   // ESC ile kapat + body scroll lock
   React.useEffect(() => {
@@ -65,12 +69,26 @@ export default function Header({ activeTab, onSelectTab }) {
             >
               Zam Hesaplama
             </button>
-            <a
-              href="/login"
-              className="ml-2 px-3 py-2 rounded-md text-sm font-semibold bg-white text-slate-900 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
-            >
-              Giriş
-            </a>
+            {user ? (
+              <div className="ml-2 flex items-center gap-2">
+                <span className="hidden sm:inline text-sm text-white/90">Merhaba, {displayName}.</span>
+                <button
+                  type="button"
+                  onClick={onSignOut}
+                  className="px-3 py-2 rounded-md text-sm font-semibold bg-white text-slate-900 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
+                >
+                  Çıkış
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenAuth}
+                className="ml-2 px-3 py-2 rounded-md text-sm font-semibold bg-white text-slate-900 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
+              >
+                Giriş
+              </button>
+            )}
           </div>
 
           {/* Hamburger (mobile) */}
@@ -170,13 +188,24 @@ export default function Header({ activeTab, onSelectTab }) {
             >
               Zam Hesaplama
             </button>
-            <a
-              href="/login"
-              className="mt-2 w-full text-left px-3 py-2 rounded-md bg-white text-slate-900 font-semibold text-sm"
-              onClick={() => setMobileOpen(false)}
-            >
-              Giriş
-            </a>
+            {user ? (
+              <div className="mt-2">
+                <div className="px-3 text-sm text-white/90 mb-2">Merhaba, {displayName}.</div>
+                <button
+                  className="w-full text-left px-3 py-2 rounded-md bg-white text-slate-900 font-semibold text-sm"
+                  onClick={() => { onSignOut(); setMobileOpen(false); }}
+                >
+                  Çıkış
+                </button>
+              </div>
+            ) : (
+              <button
+                className="mt-2 w-full text-left px-3 py-2 rounded-md bg-white text-slate-900 font-semibold text-sm"
+                onClick={() => { onOpenAuth(); setMobileOpen(false); }}
+              >
+                Giriş
+              </button>
+            )}
           </div>
         </div>
       )}
