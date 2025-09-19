@@ -18,7 +18,8 @@ import { PlanPDFDoc, MonthlyPDFDoc } from "./components/pdf";
 import { tl, uuid, moneyTone, moneyText } from "./lib/utils";
 import { ymNum, isActiveInMonth, nextYM, formatYM } from "./lib/date";
 import { FIXED_MAIN_CATEGORIES, VARIABLE_CATEGORIES } from "./lib/categories";
-import { saveLS, loadLS, LS_PLAN, LS_MONTHLY } from "./lib/storage";
+import { LS_PLAN, LS_MONTHLY } from "./lib/storage";
+import usePersistentState from "./hooks/usePersistentState";
 
 // Export için
 import * as XLSX from "xlsx";
@@ -43,41 +44,51 @@ function Planner() {
   }, [zamOld, zamNew]);
 
   // ---------- PLAN sekmesi ----------
-  const [planMonth, setPlanMonth] = useState(todayYM);
-  const [incomes, setIncomes] = useState([]);
-  const [planExpenses, setPlanExpenses] = useState([]); // {id, category, amount}
+  const [planState, setPlanState] = usePersistentState(LS_PLAN, {
+    planMonth: todayYM,
+    incomes: [],
+    planExpenses: [], // {id, category, amount}
+  });
+  const { planMonth, incomes, planExpenses } = planState;
+  const setPlanMonth = (v) =>
+    setPlanState((s) => ({ ...s, planMonth: v }));
+  const setIncomes = (updater) =>
+    setPlanState((s) => ({
+      ...s,
+      incomes: typeof updater === "function" ? updater(s.incomes) : updater,
+    }));
+  const setPlanExpenses = (updater) =>
+    setPlanState((s) => ({
+      ...s,
+      planExpenses:
+        typeof updater === "function" ? updater(s.planExpenses) : updater,
+    }));
 
   // ---------- AYLIK sekmesi ----------
-  const [monthlyMonth, setMonthlyMonth] = useState("");
-  const [monthlyEndMonth, setMonthlyEndMonth] = useState("");
-  const [monthlyFixed, setMonthlyFixed] = useState([]);     // {id, category, amount, start, end}
-  const [monthlyVariable, setMonthlyVariable] = useState([]); // {id, category, amount}
+  const [monthlyState, setMonthlyState] = usePersistentState(LS_MONTHLY, {
+    monthlyMonth: "",
+    monthlyEndMonth: "",
+    monthlyFixed: [],     // {id, category, amount, start, end}
+    monthlyVariable: [],  // {id, category, amount}
+  });
+  const { monthlyMonth, monthlyEndMonth, monthlyFixed, monthlyVariable } = monthlyState;
+  const setMonthlyMonth = (v) =>
+    setMonthlyState((s) => ({ ...s, monthlyMonth: v }));
+  const setMonthlyEndMonth = (v) =>
+    setMonthlyState((s) => ({ ...s, monthlyEndMonth: v }));
+  const setMonthlyFixed = (updater) =>
+    setMonthlyState((s) => ({
+      ...s,
+      monthlyFixed:
+        typeof updater === "function" ? updater(s.monthlyFixed) : updater,
+    }));
+  const setMonthlyVariable = (updater) =>
+    setMonthlyState((s) => ({
+      ...s,
+      monthlyVariable:
+        typeof updater === "function" ? updater(s.monthlyVariable) : updater,
+    }));
 
-  // ---------- LS yükle ----------
-  useEffect(() => {
-    const p = loadLS(LS_PLAN, null);
-    if (p) {
-      setPlanMonth(p.planMonth || todayYM);
-      setIncomes(p.incomes || []);
-      setPlanExpenses(p.planExpenses || []);
-    }
-    const m = loadLS(LS_MONTHLY, null);
-    if (m) {
-      setMonthlyMonth(m.monthlyMonth || "");
-      setMonthlyEndMonth(m.monthlyEndMonth || m.monthlyMonth || "");
-      setMonthlyFixed(m.monthlyFixed || []);
-      setMonthlyVariable(m.monthlyVariable || []);
-    }
-  }, []);
-
-  // ---------- LS kaydet ----------
-  useEffect(() => {
-    saveLS(LS_PLAN, { planMonth, incomes, planExpenses });
-  }, [planMonth, incomes, planExpenses]);
-
-  useEffect(() => {
-    saveLS(LS_MONTHLY, { monthlyMonth, monthlyEndMonth, monthlyFixed, monthlyVariable });
-  }, [monthlyMonth, monthlyEndMonth, monthlyFixed, monthlyVariable]);
 
   // ---------- SIFIRLA ----------
   const [planView, setPlanView] = useState(null);
@@ -85,18 +96,19 @@ function Planner() {
 
   const clearPlan = () => {
     try { localStorage.removeItem(LS_PLAN); } catch {}
-    setPlanMonth(todayYM);
-    setIncomes([]);
-    setPlanExpenses([]);
+    setPlanState({ planMonth: todayYM, incomes: [], planExpenses: [] });
     setPlanView(null);
   };
   const clearMonthly = () => {
     try { localStorage.removeItem(LS_MONTHLY); } catch {}
-    setMonthlyMonth("");
-    setMonthlyEndMonth("");
-    setMonthlyFixed([]);
-    setMonthlyVariable([]);
-    setIncomes([]); // yıllık görünüm için de temiz
+    setMonthlyState({
+      monthlyMonth: "",
+      monthlyEndMonth: "",
+      monthlyFixed: [],
+      monthlyVariable: [],
+    });
+    // Aylık temizlenince istersen plan gelirlerini de temizleyelim:
+    setIncomes([]);
     setMonthlyView(null);
   };
   const clearZam = () => {
