@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import GradientBackground from "./components/GradientBackground";
+import Header from "./components/Header";
 
 import * as XLSX from "xlsx";
 import {
@@ -983,157 +983,8 @@ function Planner() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Header / Full-width menu */}
-      <nav className="w-full bg-white/10 backdrop-blur border-b border-white/15">
-        <div className="container py-4 flex items-center justify-between">
-          {/* Brand */}
-          <div className="flex items-center gap-2 text-white">
-            <div className="h-8 w-8 rounded-xl bg-white/20 flex items-center justify-center">
-              💳
-            </div>
-            <div className="leading-tight">
-              <div className="text-white/80 text-xs">Hesap Yönetim Sistemi</div>
-              <div className="text-lg font-semibold">Hesabın Kralı</div>
-            </div>
-          </div>
-
-          {/* Desktop menu */}
-          <div className="hidden md:flex items-center gap-1 sm:gap-2">
-            <button
-              type="button"
-              onClick={() => setTab("plan")}
-              className={`px-3 py-4 rounded-md text-sm font-medium transition ${
-                tab === "plan"
-                  ? "bg-indigo-600 text-white"
-                  : "text-white/90 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              Aylık Hesaplama
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("aylik")}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                tab === "aylik"
-                  ? "bg-indigo-600 text-white"
-                  : "text-white/90 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              Yıllık Hesaplama
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("zam")}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                tab === "zam"
-                  ? "bg-indigo-600 text-white"
-                  : "text-white/90 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              Zam Hesaplama
-            </button>
-          </div>
-
-          {/* Hamburger button (mobile) */}
-          <button
-            type="button"
-            className="md:hidden inline-flex items-center justify-center rounded-md px-3 py-2 text-white/90 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-            aria-label="Menüyü aç/kapat"
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            {/* Icon */}
-            <svg
-              className="h-6 w-6"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {mobileOpen ? (
-                <path d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <>
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </>
-              )}
-            </svg>
-          </button>
-        </div>
-      </nav>
-      {/* Mobile menu drawer */}
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="absolute right-0 top-0 h-full w-72 bg-slate-900/95 text-white backdrop-blur border-l border-white/10 p-4 flex flex-col gap-2">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-xl bg-white/20 flex items-center justify-center">
-                  💳
-                </div>
-                <span className="font-semibold">Hesabın Kralı</span>
-              </div>
-              <button
-                className="rounded-md p-2 hover:bg-white/10"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Kapat"
-              >
-                <svg
-                  className="h-6 w-6"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <button
-              className={`w-full text-left px-3 py-2 rounded-md ${
-                tab === "plan" ? "bg-indigo-600" : "hover:bg-white/10"
-              }`}
-              onClick={() => {
-                setTab("plan");
-                setMobileOpen(false);
-              }}
-            >
-              Aylık Hesaplama
-            </button>
-            <button
-              className={`w-full text-left px-3 py-2 rounded-md ${
-                tab === "aylik" ? "bg-indigo-600" : "hover:bg-white/10"
-              }`}
-              onClick={() => {
-                setTab("aylik");
-                setMobileOpen(false);
-              }}
-            >
-              Yıllık Hesaplama
-            </button>
-            <button
-              className={`w-full text-left px-3 py-2 rounded-md ${
-                tab === "zam" ? "bg-indigo-600" : "hover:bg-white/10"
-              }`}
-              onClick={() => {
-                setTab("zam");
-                setMobileOpen(false);
-              }}
-            >
-              Zam Hesaplama
-            </button>
-          </div>
-        </div>
-      )}
+  <div className="flex flex-col min-h-screen">
+    <Header activeTab={tab} onSelectTab={setTab} />
       <main className="flex-1">
         <div className="container mt-8 sm:mt-10 mb-8">
           {/* ================== PLAN SEKME ================== */}
