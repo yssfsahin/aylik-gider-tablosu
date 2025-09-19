@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 export default function LoginModal({ open, onClose }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mode, setMode] = useState("login");
@@ -15,6 +16,11 @@ export default function LoginModal({ open, onClose }) {
     e.preventDefault();
     setError("");
     setLoading(true);
+    if (mode === "signup" && password !== confirm) {
+      setError("Şifreler eşleşmiyor.");
+      setLoading(false);
+      return;
+    }
     try {
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -93,6 +99,23 @@ export default function LoginModal({ open, onClose }) {
             />
           </label>
 
+          {mode === "signup" && (
+            <label className="block">
+              <span className="text-sm font-bold">Şifre (Tekrar)</span>
+              <input
+                className="mt-2 input w-full text-base text-slate-900 dark:text-white bg-white/80 dark:bg-slate-900/60 placeholder-slate-500 dark:placeholder-white/60"
+                type="password"
+                placeholder="••••••••"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                required
+              />
+              {confirm && password && confirm !== password && (
+                <span className="text-xs text-rose-500 mt-1 inline-block">Şifreler aynı değil</span>
+              )}
+            </label>
+          )}
+
           {error && (
             <div className="text-sm text-rose-600 bg-rose-50/70 dark:bg-rose-900/30 border border-rose-200/60 dark:border-rose-700/50 rounded-md p-2 mt-3 mb-3">
               {error}
@@ -119,7 +142,7 @@ export default function LoginModal({ open, onClose }) {
             <button
               type="button"
               className="button w-full bg-green-500 hover:bg-green-600 text-white mt-3"
-              onClick={() => setMode("signup")}
+              onClick={() => { setMode("signup"); setError(""); setConfirm(""); }}
             >
               Kayıt Ol
             </button>
@@ -127,7 +150,7 @@ export default function LoginModal({ open, onClose }) {
             <button
               type="button"
               className="button w-full bg-slate-200 hover:bg-slate-300 text-slate-900 mt-3"
-              onClick={() => setMode("login")}
+              onClick={() => { setMode("login"); setError(""); setConfirm(""); }}
             >
               Zaten hesabın var mı? Girişe Dön
             </button>
