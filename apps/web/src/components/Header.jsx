@@ -35,108 +35,112 @@ export default function Header({ activeTab, onSelectTab = () => {}, user, onOpen
     <>
       {/* Header / Full-width menu */}
       <nav className="w-full bg-white/10 backdrop-blur border-b border-white/15">
-        <div className="container py-4 flex items-center justify-between">
-          {/* Brand */}
-          <div className="flex items-center gap-2 text-white">
-            <div className="h-8 w-8 rounded-xl bg-white/20 flex items-center justify-center">
-              💳
-            </div>
-            <div className="leading-tight">
-              <div className="text-white/80 text-xs">Hesap Yönetim Sistemi</div>
-              <div className="text-lg font-semibold">Hesabın Kralı</div>
+        <div className="w-full px-4 md:px-6 xl:px-8 py-4 flex items-center justify-between">
+          <div className="flex-shrink-0">
+            {/* Brand */}
+            <div className="flex items-center gap-2 text-white">
+              <div className="h-8 w-8 rounded-xl bg-white/20 flex items-center justify-center">
+                💳
+              </div>
+              <div className="leading-tight">
+                <div className="text-white/80 text-xs">Hesap Yönetim Sistemi</div>
+                <div className="text-lg font-semibold">Hesabın Kralı</div>
+              </div>
             </div>
           </div>
 
-          {/* Desktop menu */}
-          <div className="hidden md:flex items-center gap-1 sm:gap-2">
-            <button
-              type="button"
-              onClick={() => onSelectTab("plan")}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                activeTab === "plan"
-                  ? "bg-indigo-600 text-white"
-                  : "text-white/90 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              Aylık Hesaplama
-            </button>
-            <button
-              type="button"
-              onClick={() => onSelectTab("aylik")}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                activeTab === "aylik"
-                  ? "bg-indigo-600 text-white"
-                  : "text-white/90 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              Yıllık Hesaplama
-            </button>
-            <button
-              type="button"
-              onClick={() => onSelectTab("zam")}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                activeTab === "zam"
-                  ? "bg-indigo-600 text-white"
-                  : "text-white/90 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              Zam Hesaplama
-            </button>
-            {user ? (
-              <div className="ml-2 flex items-center gap-3">
-                <div className="hidden sm:flex items-center gap-2 pr-2 border-r border-white/15">
-                  <div className="h-8 w-8 rounded-full bg-white/20 text-white flex items-center justify-center text-xs font-semibold" aria-hidden>
-                    {initials}
-                  </div>
-                  <span className="hidden sm:inline text-sm text-white/90">Merhaba, <span className="font-semibold">{firstName || displayName}</span>.</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={onSignOut}
-                  className="px-3 py-2 rounded-md text-sm font-semibold bg-white text-slate-900 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
-                  aria-label="Çıkış yap"
-                >
-                  Çıkış
-                </button>
-              </div>
-            ) : (
+          <div className="flex-grow flex justify-end items-center gap-4">
+            {/* Desktop menu */}
+            <div className="hidden md:flex items-center gap-1 sm:gap-2">
               <button
                 type="button"
-                onClick={onOpenAuth}
-                className="ml-2 px-3 py-2 rounded-md text-sm font-semibold bg-white text-slate-900 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
+                onClick={() => onSelectTab("plan")}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition ${
+                  activeTab === "plan"
+                    ? "bg-indigo-600 text-white"
+                    : "text-white/90 hover:text-white hover:bg-white/10"
+                }`}
               >
-                Giriş
+                Aylık Hesaplama
               </button>
-            )}
-          </div>
-
-          {/* Hamburger (mobile) */}
-          <button
-            type="button"
-            className="md:hidden inline-flex items-center justify-center rounded-md px-3 py-2 text-white/90 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-            aria-label="Menüyü aç/kapat"
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            <svg
-              className="h-6 w-6"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {mobileOpen ? (
-                <path d="M6 18L18 6M6 6l12 12" />
+              <button
+                type="button"
+                onClick={() => onSelectTab("aylik")}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition ${
+                  activeTab === "aylik"
+                    ? "bg-indigo-600 text-white"
+                    : "text-white/90 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                Yıllık Hesaplama
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectTab("zam")}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition ${
+                  activeTab === "zam"
+                    ? "bg-indigo-600 text-white"
+                    : "text-white/90 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                Zam Hesaplama
+              </button>
+              {user ? (
+                <div className="ml-2 flex items-center gap-3">
+                  <div className="hidden sm:flex items-center gap-2 pr-2 border-r border-white/15">
+                    <div className="h-8 w-8 rounded-full bg-white/20 text-white flex items-center justify-center text-xs font-semibold" aria-hidden>
+                      {initials}
+                    </div>
+                    <span className="hidden sm:inline text-sm text-white/90">Merhaba, <span className="font-semibold">{firstName || displayName}</span>.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onSignOut}
+                    className="px-3 py-2 rounded-md text-sm font-semibold bg-white text-slate-900 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    aria-label="Çıkış yap"
+                  >
+                    Çıkış
+                  </button>
+                </div>
               ) : (
-                <>
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </>
+                <button
+                  type="button"
+                  onClick={onOpenAuth}
+                  className="ml-2 px-3 py-2 rounded-md text-sm font-semibold bg-white text-slate-900 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
+                >
+                  Giriş
+                </button>
               )}
-            </svg>
-          </button>
+            </div>
+
+            {/* Hamburger (mobile) */}
+            <button
+              type="button"
+              className="md:hidden inline-flex items-center justify-center rounded-md px-3 py-2 text-white/90 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+              aria-label="Menüyü aç/kapat"
+              onClick={() => setMobileOpen((v) => !v)}
+            >
+              <svg
+                className="h-6 w-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {mobileOpen ? (
+                  <path d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <>
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                  </>
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
       </nav>
 
