@@ -7,6 +7,19 @@ export default function Header({ activeTab, onSelectTab = () => {}, user, onOpen
     return (user?.user_metadata?.name || user?.email || user?.phone || "Kullanıcı");
   }, [user]);
 
+  const firstName = React.useMemo(() => {
+    const n = (displayName || "").trim();
+    if (!n) return "";
+    return n.split(" ")[0];
+  }, [displayName]);
+
+  const initials = React.useMemo(() => {
+    const n = (displayName || "").trim();
+    if (!n) return "?";
+    const parts = n.split(/\s+/).slice(0,2);
+    return parts.map(p => p.charAt(0).toUpperCase()).join("");
+  }, [displayName]);
+
   // ESC ile kapat + body scroll lock
   React.useEffect(() => {
     const onKey = (e) => e.key === "Escape" && setMobileOpen(false);
@@ -70,12 +83,18 @@ export default function Header({ activeTab, onSelectTab = () => {}, user, onOpen
               Zam Hesaplama
             </button>
             {user ? (
-              <div className="ml-2 flex items-center gap-2">
-                <span className="hidden sm:inline text-sm text-white/90">Merhaba, {displayName}.</span>
+              <div className="ml-2 flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-2 pr-2 border-r border-white/15">
+                  <div className="h-8 w-8 rounded-full bg-white/20 text-white flex items-center justify-center text-xs font-semibold" aria-hidden>
+                    {initials}
+                  </div>
+                  <span className="hidden sm:inline text-sm text-white/90">Merhaba, <span className="font-semibold">{firstName || displayName}</span>.</span>
+                </div>
                 <button
                   type="button"
                   onClick={onSignOut}
                   className="px-3 py-2 rounded-md text-sm font-semibold bg-white text-slate-900 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  aria-label="Çıkış yap"
                 >
                   Çıkış
                 </button>
@@ -190,10 +209,16 @@ export default function Header({ activeTab, onSelectTab = () => {}, user, onOpen
             </button>
             {user ? (
               <div className="mt-2">
-                <div className="px-3 text-sm text-white/90 mb-2">Merhaba, {displayName}.</div>
+                <div className="px-3 text-sm text-white/90 mb-2 flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-full bg-white/20 text-white flex items-center justify-center text-[10px] font-semibold" aria-hidden>
+                    {initials}
+                  </div>
+                  <span>Merhaba, <span className="font-semibold">{firstName || displayName}</span>.</span>
+                </div>
                 <button
                   className="w-full text-left px-3 py-2 rounded-md bg-white text-slate-900 font-semibold text-sm"
                   onClick={() => { onSignOut(); setMobileOpen(false); }}
+                  aria-label="Çıkış yap"
                 >
                   Çıkış
                 </button>

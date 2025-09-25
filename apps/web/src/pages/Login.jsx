@@ -1,6 +1,7 @@
 // apps/web/src/pages/Login.jsx
 import { useState } from 'react'
 import { signIn, signUp } from '../services/auth'
+import { supabase } from '../services/supabaseClient'
 
 function TabButton({ active, onClick, children }) {
   return (
@@ -71,6 +72,24 @@ export default function LoginPage() {
     }
   }
 
+  const handleResetPassword = async () => {
+    setMsg(null)
+    if (!email || !email.includes('@')) {
+      setMsg({ kind: 'error', text: 'Lütfen önce geçerli bir e-posta girin.' })
+      return
+    }
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      if (error) throw error
+      setMsg({ kind: 'ok', text: 'Şifre sıfırlama e-postası gönderildi.' })
+    } catch (err) {
+      setMsg({ kind: 'error', text: err?.message || 'Şifre sıfırlama sırasında hata oluştu.' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
@@ -136,6 +155,17 @@ export default function LoginPage() {
               }
             >
               {loading ? 'İşleniyor…' : mode === 'signin' ? 'Giriş Yap' : 'Kayıt Ol'}
+            </button>
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={loading}
+              className={
+                'w-full rounded-lg px-4 py-2 font-semibold text-indigo-600 bg-white border border-indigo-600 transition ' +
+                (loading ? 'cursor-not-allowed bg-gray-200 border-gray-200 text-gray-500' : 'hover:bg-gray-100')
+              }
+            >
+              Şifremi Unuttum
             </button>
           </form>
 

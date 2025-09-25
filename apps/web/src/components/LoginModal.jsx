@@ -9,6 +9,18 @@ export default function LoginModal({ open, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mode, setMode] = useState("login");
+  const [name, setName] = useState("");
+
+  const upsertProfile = async (displayName) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from("profiles").upsert(
+        { id: user.id, email: user.email, name: displayName?.trim() || null },
+        { onConflict: "id" }
+      );
+    } catch {}
+  };
 
   if (!open) return null;
 
@@ -24,14 +36,21 @@ export default function LoginModal({ open, onClose }) {
     try {
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) setError(error.message); else onClose?.();
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password });
         if (error) setError(error.message);
         else {
-          // Kayıt başarılı, e-posta doğrulaması gönderilir
+          await upsertProfile();
           onClose?.();
-          // İstersen burada toast/alert gösterebilirsin
+        }
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { name } }
+        });
+        if (error) setError(error.message);
+        else {
+          await upsertProfile(name);
+          onClose?.();
         }
       }
     } catch (err) {
@@ -50,6 +69,24 @@ export default function LoginModal({ open, onClose }) {
       // Supabase yönlendirme akışı başlatır; success durumda redirect olur
     } catch (err) {
       setError(err.message || "Google ile giriş başarısız.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError("Lütfen e-posta adresinizi girin.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      alert("Şifre sıfırlama bağlantısı e‑posta adresinize gönderildi.");
+    } catch (ex) {
+      setError(ex.message || "Şifre sıfırlama başarısız.");
     } finally {
       setLoading(false);
     }
@@ -74,6 +111,20 @@ export default function LoginModal({ open, onClose }) {
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4 max-w-xs mx-auto">
+          {mode === "signup" && (
+            <label className="block">
+              <span className="text-sm font-bold">Ad Soyad</span>
+              <input
+                className="mt-2 input w-full text-base text-slate-900 dark:text-white bg-white/80 dark:bg-slate-900/60 placeholder-slate-500 dark:placeholder-white/60"
+                type="text"
+                placeholder="Yusuf Demir"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </label>
+          )}
+
           <label className="block">
             <span className="text-sm font-bold">E-posta</span>
             <input
@@ -138,11 +189,22 @@ export default function LoginModal({ open, onClose }) {
               Vazgeç
             </button>
           </div>
+          {mode === "login" && (
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={loading}
+              className="button w-full mt-2 bg-white text-ink border border-slate-300 hover:bg-slate-50 disabled:opacity-60"
+              title="E-postanı gir, şifre sıfırlama bağlantısı gönderelim"
+            >
+              Şifremi Unuttum
+            </button>
+          )}
           {mode === "login" ? (
             <button
               type="button"
               className="button w-full bg-green-500 hover:bg-green-600 text-white mt-3"
-              onClick={() => { setMode("signup"); setError(""); setConfirm(""); }}
+              onClick={() => { setMode("signup"); setError(""); setConfirm(""); setName(""); }}
             >
               Kayıt Ol
             </button>
@@ -150,7 +212,7 @@ export default function LoginModal({ open, onClose }) {
             <button
               type="button"
               className="button w-full bg-slate-200 hover:bg-slate-300 text-slate-900 mt-3"
-              onClick={() => { setMode("login"); setError(""); setConfirm(""); }}
+              onClick={() => { setMode("login"); setError(""); setConfirm(""); setName(""); }}
             >
               Zaten hesabın var mı? Girişe Dön
             </button>

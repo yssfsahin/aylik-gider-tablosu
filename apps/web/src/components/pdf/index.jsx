@@ -91,24 +91,68 @@ const SummaryCards = ({ items = [] }) => (
 );
 
 const DistributionBar = ({ segments = [] }) => {
-  const total = segments.reduce((a, s) => a + (s.value || 0), 0) || 1;
+  const total = segments.reduce((a, s) => a + (s.value || 0), 0);
+  const safeTotal = total > 0 ? total : 1;
+
   return (
-    <View style={{ marginTop: 6, marginBottom: 20 }}>
-      <View style={{ height: 10, borderRadius: 6, overflow: "hidden", flexDirection: "row", borderWidth: 1, borderColor: "#e2e8f0" }}>
+    <View style={{ marginTop: 8, marginBottom: 22 }}>
+      {/* Kalınlaştır + kontrast artır */}
+      <View
+        style={{
+          height: 16,                       // 10 -> 16
+          borderRadius: 8,
+          overflow: "hidden",
+          flexDirection: "row",
+          borderWidth: 1,
+          borderColor: "#CBD5E1",          // biraz koyu kenar
+          backgroundColor: "#E2E8F0",      // arka plan gri, renkler öne çıksın
+        }}
+      >
         {segments.map((s, i) => (
-          <View key={i} style={{ flex: (s.value || 0) / total, backgroundColor: s.color || "#c7d2fe" }} />
+          <View
+            key={i}
+            style={{
+              flex: (s.value || 0) / safeTotal,
+              backgroundColor: s.color || "#6366F1",  // doygun varsayılan
+              // segmentler arası ince beyaz ayraç
+              borderRightWidth: i < segments.length - 1 ? 1 : 0,
+              borderRightColor: "#FFFFFF",
+            }}
+          />
         ))}
       </View>
-      <View style={{ marginTop: 6, flexDirection: "column", gap: 4 }}>
-        {segments.map((s, i) => (
-          <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: s.color || "#c7d2fe" }} />
-            <Text style={{ fontSize: 10, color: "#475569" }}>
-              {s.label} — {((s.value / total) * 100).toFixed(1)}%
-            </Text>
+      {/* barın hemen altındaki liste */}
+      {(() => {
+        const maxRows = 4;
+        const maxCols = 3;
+        const colCount = Math.min(maxCols, Math.ceil(segments.length / maxRows));
+        const cols = Array.from({ length: colCount }, (_, c) =>
+          segments.slice(c * maxRows, (c + 1) * maxRows)
+        );
+
+        return (
+          <View style={{ marginTop: 8, flexDirection: "row", gap: 12 }}>
+            {cols.map((col, ci) => (
+              <View key={ci} style={{ flex: 1, gap: 4 }}>
+                {col.map((s, ri) => {
+                  const globalIndex = ci * maxRows + ri + 1; // 1., 2., 3. ...
+                  return (
+                    <View key={ri} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={{ width: 14, fontSize: 10, color: "#475569", textAlign: "right" }}>
+                        {globalIndex}.
+                      </Text>
+                      <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: s.color || "#6366F1" }} />
+                      <Text style={{ fontSize: 10, color: "#475569" }}>
+                        {s.label} — {((s.value / safeTotal) * 100).toFixed(1)}%
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
+        );
+      })()}
     </View>
   );
 };
@@ -116,7 +160,14 @@ const DistributionBar = ({ segments = [] }) => {
 // ============ Belgeler ============
 
 export function PlanPDFDoc({ month, rows, total, incomeSum = 0, available = 0 }) {
-  const palette = ["#a5b4fc","#93c5fd","#86efac","#fca5a5","#fcd34d","#cbd5e1"];
+  const palette = [
+    "#6366F1", // indigo-500
+    "#3B82F6", // blue-500
+    "#22C55E", // green-500
+    "#EF4444", // red-500
+    "#F59E0B", // amber-500
+    "#8B5CF6", // violet-500
+  ];
   const byCat = rows.reduce((acc, r) => {
     const k = r.kategori || "Diğer";
     acc[k] = (acc[k] || 0) + (+r.tutar || 0);
@@ -171,7 +222,14 @@ export function PlanPDFDoc({ month, rows, total, incomeSum = 0, available = 0 })
 }
 
 export function MonthlyPDFDoc({ month, rows, total, incomeSum = 0 }) {
-  const palette = ["#a5b4fc","#93c5fd","#86efac","#fca5a5","#fcd34d","#cbd5e1"];
+  const palette = [
+  "#6366F1", // indigo-500
+  "#3B82F6", // blue-500
+  "#22C55E", // green-500
+  "#EF4444", // red-500
+  "#F59E0B", // amber-500
+  "#8B5CF6", // violet-500
+];
   const byCat = rows.reduce((acc, r) => {
     const k = r.kategori || "Diğer";
     acc[k] = (acc[k] || 0) + (+r.tutar || 0);
@@ -214,8 +272,8 @@ export function MonthlyPDFDoc({ month, rows, total, incomeSum = 0 }) {
           <View key={i} style={[pdfStyles.row, i % 2 === 1 && pdfStyles.rowAlt]}>
             <Text style={pdfStyles.td}>{r.tip}</Text>
             <Text style={pdfStyles.td}>{r.kategori}</Text>
-            <Text style={pdfStyles.td}>{r.start || ""}</Text>
-            <Text style={pdfStyles.td}>{r.end || ""}</Text>
+            <Text style={pdfStyles.td}>{r.start ? formatYM(r.start) : ""}</Text>
+            <Text style={pdfStyles.td}>{r.end ? formatYM(r.end) : ""}</Text>
             <Text style={[pdfStyles.td, pdfStyles.tdRight]}>{`${tl(r.tutar)} ₺`}</Text>
           </View>
         ))}
@@ -229,6 +287,107 @@ export function MonthlyPDFDoc({ month, rows, total, incomeSum = 0 }) {
           <Text render={({ pageNumber, totalPages }) => `Sayfa ${pageNumber} / ${totalPages}`} />
         </View>
       </Page>
+    </Document>
+  );
+}
+
+export function YearlyPDFDoc({ months = [] }) {
+  // Defensive: normalize, sort by year-month ascending, and ensure array
+  const asArray = Array.isArray(months)
+    ? months
+    : Object.values(months || {});
+
+  const ymToNum = (ym = "") => Number(String(ym).replace("-", ""));
+  const sorted = [...asArray].sort((a, b) => ymToNum(a?.month) - ymToNum(b?.month));
+
+  const palette = [
+    "#6366F1", // indigo-500
+    "#3B82F6", // blue-500
+    "#22C55E", // green-500
+    "#EF4444", // red-500
+    "#F59E0B", // amber-500
+    "#8B5CF6", // violet-500
+  ];
+
+  const buildSegments = (rows = []) => {
+    const byCat = rows.reduce((acc, r) => {
+      const k = r.kategori || "Diğer";
+      acc[k] = (acc[k] || 0) + (+r.tutar || 0);
+      return acc;
+    }, {});
+    const entries = Object.entries(byCat);
+    if (!entries.length) return [];
+    const top = entries.sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const rest = entries.slice(5).reduce((a, [, v]) => a + v, 0);
+    return [...top, ...(rest > 0 ? [["Diğer", rest]] : [])].map(([label, value], i) => ({
+      label,
+      value,
+      color: palette[i % palette.length],
+    }));
+  };
+
+  return (
+    <Document>
+      {sorted.map((m, idx) => {
+        const rows = m?.rows || [];
+        const total = m?.total || 0;
+        const incomeSum = m?.incomeSum || 0;
+        const segsArr = buildSegments(rows);
+        const avail = incomeSum - total;
+
+        return (
+          <Page key={(m?.month || "m") + idx} size="A4" style={pdfStyles.page}>
+            <BrandHeader subtitle={`Rapor tarihi: ${new Date().toLocaleDateString("tr-TR")}`} />
+            <Text style={pdfStyles.h1}>{`${formatYM(m?.month)} – Maliyet Tablosu`}</Text>
+
+            <SummaryCards
+              items={[
+                { label: "Gelir", value: `${tl(incomeSum)} ₺` },
+                { label: "Gider", value: `${tl(total)} ₺` },
+                {
+                  label: "Kullanılabilir",
+                  value: `${avail >= 0 ? tl(avail) : "-" + tl(Math.abs(avail))} ₺`,
+                  color: avail >= 0 ? "#059669" : "#dc2626",
+                },
+              ]}
+            />
+
+            {segsArr.length > 0 && (
+              <>
+                <Text style={{ fontSize: 11, color: "#334155", marginTop: 6, marginBottom: 8, fontFamily: "Roboto Bold" }}>
+                  Kategori Dağılımı
+                </Text>
+                <DistributionBar segments={segsArr} />
+              </>
+            )}
+
+            <View style={pdfStyles.tableHeader}>
+              {['Tip','Kategori','Başlangıç','Bitiş','Tutar'].map((h, i) => (
+                <Text key={i} style={[pdfStyles.th, i === 4 && pdfStyles.tdRight]}>{h}</Text>
+              ))}
+            </View>
+            {rows.map((r, i) => (
+              <View key={i} style={[pdfStyles.row, i % 2 === 1 && pdfStyles.rowAlt]}>
+                <Text style={pdfStyles.td}>{r.tip}</Text>
+                <Text style={pdfStyles.td}>{r.kategori}</Text>
+                <Text style={pdfStyles.td}>{r.start ? formatYM(r.start) : ""}</Text>
+                <Text style={pdfStyles.td}>{r.end ? formatYM(r.end) : ""}</Text>
+                <Text style={[pdfStyles.td, pdfStyles.tdRight]}>{`${tl(r.tutar)} ₺`}</Text>
+              </View>
+            ))}
+
+            <View style={pdfStyles.totalRow}>
+              <Text style={pdfStyles.totalLabel}>Toplam</Text>
+              <Text style={pdfStyles.totalValue}>{`${tl(total)} ₺`}</Text>
+            </View>
+
+            <View style={pdfStyles.footer} wrap={false}>
+              <Text render={() => `© ${new Date().getFullYear()} Hesabın Kralı`} />
+              <Text render={({ pageNumber, totalPages }) => `Sayfa ${pageNumber} / ${totalPages}`} />
+            </View>
+          </Page>
+        );
+      })}
     </Document>
   );
 }

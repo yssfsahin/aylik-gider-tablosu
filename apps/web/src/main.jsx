@@ -13,7 +13,7 @@ import AdviceBox from "./components/AdviceBox";
 import LoginModal from "./components/LoginModal";
 
 // PDF dokümanları
-import { PlanPDFDoc, MonthlyPDFDoc } from "./components/pdf";
+import { PlanPDFDoc, MonthlyPDFDoc, YearlyPDFDoc } from "./components/pdf";
 
 // Yardımcılar
 import { tl, uuid, moneyTone, moneyText } from "./lib/utils";
@@ -95,7 +95,7 @@ function Planner() {
     monthlyMonth: "",
     monthlyEndMonth: "",
     monthlyFixed: [],     // {id, category, amount, start, end}
-    monthlyVariable: [],  // {id, category, amount}
+    monthlyVariable: [],  // {id, category, amount, start, end}  // değişken giderler de tarih aralıklı
   });
   const { monthlyMonth, monthlyEndMonth, monthlyFixed, monthlyVariable } = monthlyState;
   const setMonthlyMonth = (v) =>
@@ -114,6 +114,42 @@ function Planner() {
       monthlyVariable:
         typeof updater === "function" ? updater(s.monthlyVariable) : updater,
     }));
+
+  // ---------- Aylık kartlar (canlı toplamlar) ----------
+  const ymToNum = (ym) => (ym ? parseInt(ym.replace("-", ""), 10) : 0);
+  const inRange = (targetYM, startYM, endYM) => {
+    if (!targetYM) return false;
+    const t = ymToNum(targetYM);
+    const s = startYM ? ymToNum(startYM) : -Infinity;
+    const e = endYM ? ymToNum(endYM) : Infinity;
+    return t >= s && t <= e;
+  };
+
+  const monthlyFixedTotal = useMemo(
+    () =>
+      monthlyFixed
+        .filter((e) => inRange(monthlyMonth, e.start, e.end))
+        .reduce((a, e) => a + (+e.amount || 0), 0),
+    [monthlyFixed, monthlyMonth]
+  );
+
+  const monthlyVariableTotal = useMemo(
+    () =>
+      monthlyVariable
+        .filter((e) => inRange(monthlyMonth, e.start, e.end))
+        .reduce((a, e) => a + (+e.amount || 0), 0),
+    [monthlyVariable, monthlyMonth]
+  );
+
+  const monthlyIncomeTotal = useMemo(
+    () => incomes.reduce((a, b) => a + (+b || 0), 0),
+    [incomes]
+  );
+
+  const monthlyAvailable = useMemo(
+    () => monthlyIncomeTotal - (monthlyFixedTotal + monthlyVariableTotal),
+    [monthlyIncomeTotal, monthlyFixedTotal, monthlyVariableTotal]
+  );
 
 
   // ---------- SIFIRLA ----------
@@ -170,7 +206,9 @@ function Planner() {
     const fixed = monthlyFixed
       .filter((e) => isActiveInMonth(monthlyMonth, e.start, e.end))
       .reduce((a, e) => a + (Number(e.amount) || 0), 0);
-    const variable = monthlyVariable.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+    const variable = monthlyVariable
+      .filter((e) => isActiveInMonth(monthlyMonth, e.start, e.end))
+      .reduce((a, e) => a + (Number(e.amount) || 0), 0);
     return { total: fixed + variable, fixed, variable };
   }, [monthlyFixed, monthlyVariable, monthlyMonth]);
 
@@ -194,13 +232,15 @@ function Planner() {
             start: e.start || "",
             end: e.end || "",
           })),
-        ...monthlyVariable.map((e) => ({
-          tip: "Değişken",
-          kategori: e.category,
-          tutar: +e.amount || 0,
-          start: "",
-          end: "",
-        })),
+        ...monthlyVariable
+          .filter((e) => isActiveInMonth(cursor, e.start, e.end))
+          .map((e) => ({
+            tip: "Değişken",
+            kategori: e.category,
+            tutar: +e.amount || 0,
+            start: e.start || "",
+            end: e.end || "",
+          })),
       ];
       if (rows.length > 0) months.push({ month: cursor, rows });
       cursor = nextYM(cursor);
@@ -276,30 +316,38 @@ function Planner() {
   const exportMonthlyPDF = async () => {
     if (!monthlyViewFilled || monthlyViewFilled.length === 0) return;
     try {
-      const element = (
-        <>
-          {monthlyViewFilled.map((m, i) => {
-            const total = m.rows.reduce((a, r) => a + (+r.tutar || 0), 0);
-            const incSum = incomes.reduce((a, b) => a + (+b || 0), 0);
-            return (
-              <MonthlyPDFDoc
-                key={i}
-                month={m.month}
-                rows={m.rows}
-                total={total}
-                incomeSum={incSum}
-              />
-            );
-          })}
-        </>
-      );
-      const blob = await pdf(<>{element}</>).toBlob();
+      // Derle: YearlyPDFDoc'un beklediği months dizisi
+      const months = monthlyViewFilled
+        .map((m) => {
+          const total = m.rows.reduce((a, r) => a + (+r.tutar || 0), 0);
+          const incSum = incomes.reduce((a, b) => a + (+b || 0), 0);
+          // PDF bileşeninin kullandığı alan adlarıyla hizala
+          return {
+            month: m.month,
+            incomeSum: incSum,
+            total,
+            rows: (m.rows || []).map((r) => ({
+              tip: r.tip,
+              kategori: r.kategori,
+              start: r.start || "",
+              end: r.end || "",
+              tutar: +r.tutar || 0,
+            })),
+          };
+        })
+        // Güvenli sıralama: "YYYY-MM"
+        .sort((a, b) => (a.month || "").localeCompare(b.month || ""));
+
+      // Tek Document, çoklu Page
+      const docElement = <YearlyPDFDoc months={months} />;
+      const blob = await pdf(docElement).toBlob();
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const first = monthlyViewFilled[0].month;
-      const last = monthlyViewFilled[monthlyViewFilled.length - 1].month;
+      const first = months[0].month;
+      const last = months[months.length - 1].month;
       a.href = url;
-      a.download = monthlyViewFilled.length === 1 ? `aylik-${first}.pdf` : `aylik-${first}_to_${last}.pdf`;
+      a.download = months.length === 1 ? `aylik-${first}.pdf` : `aylik-${first}_to_${last}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -429,7 +477,7 @@ function Planner() {
                     </div>
                   </div>
 
-                  {/* Grafik + Öneri */}
+                  {/* Grafik ve Öneri ALanı */}
                   {(() => {
                     const chartData = (planView.monthBreakdown || []).reduce((acc, r) => {
                       const k = r.kategori || "Diğer";
@@ -508,13 +556,22 @@ function Planner() {
 
               {/* Özet */}
               <div className="grid md:grid-cols-4 gap-3 mb-4">
-                <div className="card p-4"><div className="text-xs text-slate-500">Gelir</div><div className="text-xl font-semibold">{tl(incomes.reduce((a,b)=>a+(+b||0),0))} ₺</div></div>
-                <div className="card p-4"><div className="text-xs text-slate-500">Sabit Giderler</div><div className="text-xl font-semibold">{tl(monthlySummary.fixed)} ₺</div></div>
-                <div className="card p-4"><div className="text-xs text-slate-500">Değişken Giderler</div><div className="text-xl font-semibold">{tl(monthlySummary.variable)} ₺</div></div>
+                <div className="card p-4">
+                  <div className="text-xs text-slate-500">Gelir</div>
+                  <div className="text-xl font-semibold">{tl(monthlyIncomeTotal)} ₺</div>
+                </div>
+                <div className="card p-4">
+                  <div className="text-xs text-slate-500">Sabit Giderler</div>
+                  <div className="text-xl font-semibold">{tl(monthlyFixedTotal)} ₺</div>
+                </div>
+                <div className="card p-4">
+                  <div className="text-xs text-slate-500">Değişken Giderler</div>
+                  <div className="text-xl font-semibold">{tl(monthlyVariableTotal)} ₺</div>
+                </div>
                 <div className="card p-4">
                   <div className="text-xs text-slate-500">Bu Ay Kullanılabilir</div>
-                  <div className={`text-xl font-semibold ${moneyTone(incomes.reduce((a,b)=>a+(+b||0),0)-monthlySummary.total)}`}>
-                    {moneyText(incomes.reduce((a,b)=>a+(+b||0),0)-monthlySummary.total)} ₺
+                  <div className={`text-xl font-semibold ${moneyTone(monthlyAvailable)}`}>
+                    {moneyText(monthlyAvailable)} ₺
                   </div>
                 </div>
               </div>
@@ -563,15 +620,37 @@ function Planner() {
               <div className="card p-4 mt-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold">Değişken Giderler</h3>
-                  <button className="button" onClick={()=>setMonthlyVariable((v)=>[...v,{ id:uuid(), category:"Market", amount:"" }])}>+ Ekle</button>
+                  <button className="button" onClick={()=>setMonthlyVariable((v)=>[...v,{ id:uuid(), category:"Market", amount:"", start:"", end:"" }])}>+ Ekle</button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                   {monthlyVariable.map((item,i)=>(
                     <React.Fragment key={item.id}>
-                      <select className="input" value={item.category} onChange={(e)=>setMonthlyVariable((v)=>v.map((x,idx)=>idx===i? {...x, category:e.target.value}: x))}>
+                      <select
+                        className="input"
+                        value={item.category}
+                        onChange={(e)=>setMonthlyVariable((v)=>v.map((x,idx)=>idx===i? {...x, category:e.target.value}: x))}
+                      >
                         {VARIABLE_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
                       </select>
-                      <input className="input" type="number" placeholder="Tutar" value={item.amount ?? ""} onChange={(e)=>setMonthlyVariable((v)=>v.map((x,idx)=>idx===i? {...x, amount:e.target.value}: x))}/>
+                      <input
+                        className="input"
+                        type="number"
+                        placeholder="Tutar"
+                        value={item.amount ?? ""}
+                        onChange={(e)=>setMonthlyVariable((v)=>v.map((x,idx)=>idx===i? {...x, amount:e.target.value}: x))}
+                      />
+                      <MonthField
+                        value={item.start || ""}
+                        onChange={(e)=>setMonthlyVariable((v)=>v.map((x,idx)=>idx===i? {...x, start:e.target.value}: x))}
+                        placeholder="Başlangıç"
+                        aria="Başlangıç"
+                      />
+                      <MonthField
+                        value={item.end || ""}
+                        onChange={(e)=>setMonthlyVariable((v)=>v.map((x,idx)=>idx===i? {...x, end:e.target.value}: x))}
+                        placeholder="Bitiş"
+                        aria="Bitiş"
+                      />
                       <button className="button" onClick={()=>setMonthlyVariable((v)=>v.filter((_,idx)=>idx!==i))}>✕</button>
                     </React.Fragment>
                   ))}
@@ -638,8 +717,8 @@ function Planner() {
                                 <tr key={idx} className="hover:bg-slate-50 transition">
                                   <td className="px-4 py-2">{x.tip}</td>
                                   <td className="px-4 py-2">{x.kategori}</td>
-                                  <td className="px-4 py-2">{x.start || ""}</td>
-                                  <td className="px-4 py-2">{x.end || ""}</td>
+                                  <td className="px-4 py-2">{x.start ? formatYM(x.start) : ""}</td>
+                                  <td className="px-4 py-2">{x.end ? formatYM(x.end) : ""}</td>
                                   <td className="px-4 py-2 text-right font-medium">{tl(x.tutar)} ₺</td>
                                 </tr>
                               ))}
